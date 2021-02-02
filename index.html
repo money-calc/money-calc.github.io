@@ -1,0 +1,182 @@
+<!doctype html>
+<html lang="ru">
+	<head>
+	    <meta charset="utf-8">
+	    <meta name="viewport" content="width=device-width, initial-scale=1">
+		<title>Калькулятор</title>
+
+		<style>
+			body {
+			    font-size: 14pt;
+			    margin: 0;
+			}
+
+			form {
+		        width: 100%;
+		        max-width: 1000px;
+		        margin: 0 auto;
+			}
+
+			fieldset {
+				display: grid;
+                grid-template-columns: 1fr 1fr;
+                border: 0;
+                padding-top: 1em;
+			}
+
+			input, label {
+			    display: block;
+			    box-sizing: border-box;
+			    width: calc(100% - 2em);
+			    font-size: 14pt;
+			    margin-left: 1em;
+				margin-right: 1em;
+			}
+			
+			label {
+			    margin-bottom: 1em;
+			}
+			
+			input {
+			    padding-left: 1em;
+			    margin-bottom: 2em;
+			    height: 3em;
+			}
+			
+			input:invalid {
+			    border: 0;
+                box-shadow: 0 0 3px 1px red;
+            }
+
+            input:focus:invalid {
+                box-shadow: none;
+            }
+			
+			.depositIn {
+			    grid-column-start: 1;
+			    grid-column-end: 2;
+			    grid-row-start: 1;
+			    grid-row-end: 2;
+			}
+			
+			.depositOut {
+			    grid-column-start: 2;
+			    grid-column-end: 3;
+			    grid-row-start: 1;
+			    grid-row-end: 2;
+			}
+			
+			.settings {
+			    grid-column-start: 1;
+			    grid-column-end: 3;
+			    grid-row-start: 2;
+			    grid-row-end: 3;
+			}
+		</style>
+	</head>
+	<body>
+		<form id="calcInput">
+			<fieldset>
+			    <div class="depositIn">
+				    <label for="deposit">Стартовый депозит: </label>
+				    <input type="number" id="deposit" min="0" step="0.01">
+
+				    <label for="balance">Стартовый баланс: </label>
+    				<input type="number" id="balance" min="0" step="0.01">
+				</div>
+				
+				<div class="settings">
+				    <label for="days">Колличество дней: </label>
+				    <input type="number" id="days" min="0" step="1">
+
+				    <label for="dayPercent">Процент в день: </label>
+				    <input type="number" id="dayPercent" min="0" step="any">
+				    
+				    <input type="button" id="doCalc" value="Посчитать" />
+				</div>
+				
+				<div class="depositOut">
+				    <label for="outDeposit">Итоговый депозит: </label>
+				    <input type="text" id="outDeposit" disabled />
+
+				    <label for="outBalance">Итоговый баланс: </label>
+				    <input type="text" id="outBalance" disabled />
+				</div>
+			</fieldset>
+		</form>
+
+		<script>
+			function calcMoney(deposit, balance, days, dayPercent) 
+			{
+			    const autoReinvestLimit = currency(100);
+
+				for (var i = 0; i < days; ++i) {
+    				const daily = deposit.multiply(dayPercent).divide(100)
+					balance = balance.add(daily);
+					
+					if (balance.intValue >= autoReinvestLimit.intValue) {
+						deposit = deposit.add(balance);
+						balance = currency(0);
+					}
+				}
+
+				return {
+    				deposit: deposit,
+	    			balance: balance
+				};
+			}
+			
+			function parseForm(form) 
+			{
+				const deposit = currency(form.elements["deposit"].value);
+				const balance = currency(form.elements["balance"].value);
+				const days = parseInt(form.elements["days"].value);
+				const dayPercent = parseFloat(form.elements["dayPercent"].value);
+
+				return {
+				    deposit: deposit, 
+				    balance: balance,
+				    days: days, 
+				    dayPercent: dayPercent
+				};
+			}
+
+			function doCalc()
+			{
+    			const calcInput = document.forms["calcInput"];
+                const formData = parseForm(calcInput);
+
+                const total = calcMoney(formData.deposit, formData.balance, formData.days, formData.dayPercent);
+
+				calcInput.elements["outDeposit"].value = total.deposit.format();
+				calcInput.elements["outBalance"].value = total.balance.format();
+			}
+			
+			const calcInput = document.forms["calcInput"];
+			
+			window.onload = function() {  // Load Form Data
+    			const elements = calcInput.elements;
+			    for (let i = 0; i < elements.length; ++i) {
+			        const element = elements[i];
+			        if (element.type === "text" || element.type === "number") {
+			            element.value = localStorage.getItem(element.id);
+			        }
+			    }
+			}
+			
+			window.onunload = function() {  // Save Form Data
+			    const elements = calcInput.elements;
+			    for (let i = 0; i < elements.length; ++i) {
+    			    const element = elements[i];
+			        if (element.type === "text" || element.type === "number") {
+	    		        localStorage.setItem(element.id, element.value);
+			        }
+			    }
+			}
+
+			calcInput.elements["doCalc"].addEventListener('click', doCalc);
+		</script>
+		<script src="currency.min.js"></script>
+	</body>
+</html>
+
